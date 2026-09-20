@@ -121,52 +121,48 @@ export function generateDynamicChatResponse(params: {
 
   const capitalizedSubject = subject.charAt(0).toUpperCase() + subject.slice(1);
 
+  // Helper to strip PDF headers like "Page 3 Chapter 2: ..."
+  const cleanSnippet = (s: string) => {
+    return s
+      .replace(/^[A-Za-z0-9\s_-]+Page\s+\d+[:\s-]*/i, "")
+      .replace(/^Chapter\s+\d+[:\s-]*/i, "")
+      .replace(/^\d+(\.\d+)*\s*/, "")
+      .replace(/^[•\-*]\s*/, "")
+      .trim();
+  };
+
+  const cleanedMatches = bestMatches
+    .map(cleanSnippet)
+    .filter((s) => s.length > 15);
+
   if (isVoice) {
-    if (bestMatches.length > 0) {
-      return `Based on your course notes, regarding ${subject}: ${bestMatches[0]} ${bestMatches[1] ? bestMatches[1] : ""}`;
+    if (cleanedMatches.length > 0) {
+      return `Regarding ${subject}: ${cleanedMatches[0]} ${cleanedMatches[1] ? cleanedMatches[1] : ""}`;
     }
-    return `Regarding ${capitalizedSubject}: It is a fundamental concept in your syllabus. The core principle requires identifying the initial conditions and applying theoretical derivations step by step. What specific problem would you like to explore next?`;
+    return `Regarding ${capitalizedSubject}: In your syllabus, it represents a foundational concept connecting theory with practical problem solving. What specific part would you like to explore?`;
   }
 
-  if (bestMatches.length > 0) {
-    return `### Academic Breakdown: ${capitalizedSubject}
+  if (cleanedMatches.length > 0) {
+    const mainPoint = cleanedMatches[0];
+    const supportingPoints = cleanedMatches.slice(1, 4);
 
-Based on your uploaded course material ${documentTitle ? `(**${documentTitle}**)` : ""}:
+    return `Here is the explanation for **${capitalizedSubject}** from your course material:
 
-#### 1. Core Principle & Definition
-${bestMatches[0]}
+${mainPoint}
 
-#### 2. Key Mechanism & Findings
-${bestMatches[1] ? `• ${bestMatches[1]}` : `• Focus on how ${subject} operates under theoretical and edge case conditions.`}
-${bestMatches[2] ? `• ${bestMatches[2]}` : `• In examinations, ensure you identify the fundamental assumptions before applying formulas.`}
+${supportingPoints.length > 0 ? supportingPoints.map((p) => `• ${p}`).join("\n\n") : ""}
 
-#### 3. Examination & Study Takeaway
-When solving problems on **${subject}**:
-1. State the primary governing principle clearly.
-2. Verify all parameter boundary values and units.
-3. Review related practice questions in your study deck.
-
-*(Grounded in your uploaded study material)*`;
+${documentTitle ? `*(Source: ${documentTitle})*` : ""}`;
   }
 
   // 4. General Subject Response when no exact context matched
-  return `### Comprehensive Explanation: ${capitalizedSubject}
+  return `### ${capitalizedSubject}
 
-Here is a structured academic breakdown to help you master **${capitalizedSubject}**:
+**${capitalizedSubject}** represents a fundamental topic in this curriculum:
 
-#### 1. Foundational Concept
-**${capitalizedSubject}** represents a fundamental topic in academic curriculum. At its core, it addresses the relationship between theoretical models and analytical problem-solving.
-
-#### 2. Step-by-Step Analytical Breakdown
-1. **First Principles**: Identify the initial state, given variables, and boundary conditions.
-2. **Mechanism**: Follow the logical derivation or systemic interactions governing the process.
-3. **Verification**: Check intermediate steps for mathematical or conceptual consistency.
-
-#### 3. Common Exam Pitfalls & Tips
-- **Common Mistake**: Confusing definitions with applied approximations. Always specify the governing regime.
-- **Exam Tip**: Examiners frequently test edge cases and parameter sensitivities for ${subject}.
-
-Would you like me to generate 5 targeted flashcards or a practice quiz based on **${capitalizedSubject}**?`;
+• **Core Concept**: It establishes the analytical relationship between theoretical models, given parameters, and systematic problem solving.
+• **Methodology**: To solve related examination problems, identify the initial state, given variables, and boundary conditions before applying standard formulas.
+• **Exam Tip**: Examiners frequently test edge cases and parameter sensitivities for ${subject}.`;
 }
 
 /**

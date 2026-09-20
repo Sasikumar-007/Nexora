@@ -20,10 +20,137 @@ export interface AICompletionOptions {
 }
 
 /**
+ * Get Google Gemini API key if configured
+ */
+export function getGeminiKey(customKey?: string): string {
+  return (
+    customKey ||
+    process.env.GEMINI_API_KEY ||
+    process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+    (process.env.AI_API_KEY?.startsWith("AIzaSy") ? process.env.AI_API_KEY : "") ||
+    ""
+  ).trim();
+}
+
+/**
+ * Direct native Google Gemini API caller for real-time natural language answers
+ */
+export async function callGoogleGemini(params: {
+  apiKey: string;
+  messages: ChatMessagePayload[];
+  systemPrompt?: string;
+  temperature?: number;
+  maxTokens?: number;
+  isVoice?: boolean;
+}): Promise<string | null> {
+  const models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"];
+
+  let systemText = params.systemPrompt || "You are an expert academic tutor.";
+  if (params.isVoice) {
+    systemText += " IMPORTANT FOR VOICE AGENT: Provide a direct, natural, conversational spoken answer in 2 to 3 concise sentences. Do NOT use markdown symbols, asterisks, headers, or bullet lists.";
+  }
+
+  // Format message history
+  let conversationText = "";
+  for (const m of params.messages) {
+    conversationText += `${m.role === "user" ? "Student" : "Tutor"}: ${m.content}\n`;
+  }
+  conversationText += "Tutor:";
+
+  for (const model of models) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${params.apiKey}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: systemText }],
+          },
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: conversationText }],
+            },
+          ],
+          generationConfig: {
+            temperature: params.temperature ?? (params.isVoice ? 0.3 : 0.4),
+            maxOutputTokens: params.isVoice ? 250 : (params.maxTokens ?? 1500),
+          },
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text && text.trim().length > 0) {
+          return text.trim();
+        }
+      } else {
+        const errText = await res.text();
+        console.warn(`[Gemini API ${model}] Notice (${res.status}):`, errText);
+      }
+    } catch (err: any) {
+      console.warn(`[Gemini API ${model}] Connection warning:`, err.message);
+    }
+  }
+  return null;
+}
+
+/**
+ * Direct native Google Gemini API caller for JSON responses (Quizzes, Flashcards)
+ */
+export async function callGoogleGeminiJson<T>(params: {
+  apiKey: string;
+  prompt: string;
+  systemPrompt?: string;
+}): Promise<T | null> {
+  const models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"];
+  const fullPrompt = `${params.systemPrompt || "You are an expert academic tutor."}\n\n` +
+    `CRITICAL: Return ONLY a valid, raw JSON object matching the requested schema. No markdown formatting, no backticks.\n\n` +
+    `Prompt:\n${params.prompt}`;
+
+  for (const model of models) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${params.apiKey}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: fullPrompt }],
+            },
+          ],
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0.2,
+          },
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (rawText) {
+          const cleaned = rawText.replace(/```json\n?|\n?```/g, "").trim();
+          return JSON.parse(cleaned) as T;
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[Gemini JSON ${model}] Warning:`, err.message);
+    }
+  }
+  return null;
+}
+
+/**
  * Determine effective AI API configuration
  */
 export function getAIConfig(customKey?: string, customUrl?: string, customModel?: string) {
-  const apiKey = (customKey || process.env.AI_API_KEY || "").trim();
+  const geminiKey = getGeminiKey(customKey);
+  const apiKey = (customKey || geminiKey || process.env.AI_API_KEY || "").trim();
   let apiUrl = (customUrl || process.env.AI_API_URL || "https://api.openai.com/v1").trim();
   let model = (customModel || process.env.AI_MODEL || "gpt-4o-mini").trim();
 
@@ -32,14 +159,14 @@ export function getAIConfig(customKey?: string, customUrl?: string, customModel?
     if (!customUrl) apiUrl = "https://api.groq.com/openai/v1";
     if (!customModel || customModel.includes("gpt")) model = "llama-3.3-70b-versatile";
   }
-  // Auto-detect Google Gemini keys (Free tier)
-  else if (apiKey.startsWith("AIzaSy")) {
+  // Auto-detect Google Gemini keys
+  else if (apiKey.startsWith("AIzaSy") || geminiKey) {
     if (!customUrl) apiUrl = "https://generativelanguage.googleapis.com/v1beta/openai/";
     if (!customModel || customModel.includes("gpt")) model = "gemini-1.5-flash";
   }
 
   const isConfigured = !!(apiKey && apiKey.length > 5 && !apiKey.includes("placeholder"));
-  return { apiKey, apiUrl, model, isConfigured };
+  return { apiKey, apiUrl, model, isConfigured, geminiKey };
 }
 
 export function isAIConfigured(): boolean {
@@ -52,13 +179,33 @@ export function isAIConfigured(): boolean {
 export async function generateChatResponse(
   options: AICompletionOptions
 ): Promise<string> {
-  const { apiKey, apiUrl, model, isConfigured } = getAIConfig(
+  const { apiKey, apiUrl, model, isConfigured, geminiKey } = getAIConfig(
     options.apiKey,
     options.apiUrl,
     options.model
   );
 
-  if (isConfigured) {
+  // 1. Prioritize Google Gemini API if Gemini Key is available
+  if (geminiKey) {
+    try {
+      const geminiReply = await callGoogleGemini({
+        apiKey: geminiKey,
+        messages: options.messages,
+        systemPrompt: options.systemPrompt,
+        temperature: options.temperature,
+        maxTokens: options.maxTokens,
+        isVoice: options.isVoice,
+      });
+      if (geminiReply && geminiReply.trim().length > 0) {
+        return geminiReply;
+      }
+    } catch (err: any) {
+      console.warn("[Gemini API Router] Falling back:", err.message);
+    }
+  }
+
+  // 2. Try OpenAI / Groq Compatible endpoint if configured
+  if (isConfigured && apiKey !== geminiKey) {
     try {
       const messages = [];
       let sys = options.systemPrompt || "You are an expert academic tutor.";
@@ -97,7 +244,7 @@ export async function generateChatResponse(
     }
   }
 
-  // Dynamic Real-Time NLP Fallback (never returns static identical text)
+  // 3. Dynamic Real-Time NLP Fallback (never returns static identical text)
   const lastUserMsg = [...options.messages].reverse().find((m) => m.role === "user")?.content || "";
   return generateDynamicChatResponse({
     query: lastUserMsg,
@@ -121,17 +268,33 @@ export async function generateStructuredJson<T>(params: {
   apiUrl?: string;
   model?: string;
 }): Promise<T> {
-  const { apiKey, apiUrl, model, isConfigured } = getAIConfig(
+  const { apiKey, apiUrl, model, isConfigured, geminiKey } = getAIConfig(
     params.apiKey,
     params.apiUrl,
     params.model
   );
 
+  // 1. Prioritize Google Gemini API if Gemini Key is available
+  if (geminiKey) {
+    try {
+      const geminiJson = await callGoogleGeminiJson<T>({
+        apiKey: geminiKey,
+        prompt: params.prompt,
+        systemPrompt: params.systemPrompt,
+      });
+      if (geminiJson) {
+        return geminiJson;
+      }
+    } catch (err: any) {
+      console.warn("[Gemini JSON Router] Falling back:", err.message);
+    }
+  }
+
   const systemInstruction = `${params.systemPrompt || "You are an expert academic tutor."}\n` +
     `CRITICAL: Output ONLY valid JSON matching this exact structure, with no markdown code blocks or additional text:\n` +
     JSON.stringify(params.schemaSample, null, 2);
 
-  if (isConfigured) {
+  if (isConfigured && apiKey !== geminiKey) {
     try {
       const res = await fetch(`${apiUrl}/chat/completions`, {
         method: "POST",
