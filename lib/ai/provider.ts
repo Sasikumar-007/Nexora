@@ -115,10 +115,16 @@ export async function callGoogleGeminiJson<T>(params: {
   apiKey: string;
   prompt: string;
   systemPrompt?: string;
+  schemaSample?: Record<string, any>;
 }): Promise<T | null> {
   const models = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.6-flash"];
+  let schemaInstruction = "";
+  if (params.schemaSample) {
+    schemaInstruction = `\n\nREQUIRED JSON SCHEMA STRUCTURE:\n${JSON.stringify(params.schemaSample, null, 2)}\n\n`;
+  }
   const fullPrompt = `${params.systemPrompt || "You are an expert academic tutor."}\n\n` +
-    `CRITICAL: Return ONLY a valid, raw JSON object matching the requested schema. No markdown formatting, no backticks.\n\n` +
+    `CRITICAL: Return ONLY a valid, raw JSON object matching the requested schema structure. Do not wrap in markdown or backticks.\n` +
+    schemaInstruction +
     `Prompt:\n${params.prompt}`;
 
   for (const model of models) {
@@ -305,6 +311,7 @@ export async function generateStructuredJson<T>(params: {
         apiKey: geminiKey,
         prompt: params.prompt,
         systemPrompt: params.systemPrompt,
+        schemaSample: params.schemaSample,
       });
       if (geminiJson) {
         return geminiJson;

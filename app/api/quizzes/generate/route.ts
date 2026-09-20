@@ -26,6 +26,8 @@ Text excerpt: ${text ? text.slice(0, 2500) : "General exam preparation topics."}
       prompt,
       systemPrompt: "You are an expert exam question creator for university STEM courses.",
       schemaSample: sampleSchema,
+      topic: topic || "Study Material",
+      text: text || "",
     });
 
     const quizId = "quiz-" + Date.now();

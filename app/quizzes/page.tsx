@@ -232,14 +232,19 @@ function QuizzesContent() {
   const currentDoc = documents.find((d) => d.id === selectedDocId);
 
   return (
-    <AppShell title="AI Practice Quizzes & Exam Prep">
+    <AppShell title="Google Gemini AI Practice Quizzes & Exam Prep">
       <div className="space-y-8 max-w-4xl mx-auto">
         {/* Document Selector & Action Header */}
         <div className="card-weaviate p-6 bg-white flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex-1">
-            <label className="block text-xs font-mono font-bold uppercase text-[#8396B1] mb-1.5 flex items-center gap-1.5">
-              <BookOpen className="h-3.5 w-3.5 text-[#CFDE22]" /> Select Study Material
-            </label>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="badge-weaviate-lime font-mono text-[10px] font-bold">
+                ✨ GEMINI 3.5 FLASH API
+              </span>
+              <label className="block text-xs font-mono font-bold uppercase text-[#8396B1] flex items-center gap-1.5">
+                <BookOpen className="h-3.5 w-3.5 text-[#CFDE22]" /> Select Study Material
+              </label>
+            </div>
             <select
               value={selectedDocId}
               onChange={(e) => {
@@ -275,7 +280,7 @@ function QuizzesContent() {
               className="btn-weaviate-secondary text-xs px-4 py-2.5 gap-1.5 disabled:opacity-50"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${isGenerating ? "animate-spin" : ""}`} />
-              Generate New Questions
+              Generate Gemini Questions
             </button>
             <button
               onClick={() => setGeneratorOpen(true)}
@@ -300,10 +305,10 @@ function QuizzesContent() {
               <RefreshCw className="h-5 w-5 animate-spin" />
             </div>
             <h3 className="font-bold font-display text-base text-[#1D156B]">
-              Formulating Exam Questions for: {currentDoc?.title || "Your Material"}
+              Google Gemini is Generating Exam Questions for: {currentDoc?.title || "Your Material"}
             </h3>
             <p className="text-xs text-[#4C4B84] max-w-md mx-auto">
-              Our AI is analyzing the uploaded syllabus to craft targeted multiple-choice questions with full explanations...
+              Gemini 3.5 Flash is analyzing the syllabus to craft targeted multiple-choice questions with step-by-step reasoning...
             </p>
           </div>
         )}

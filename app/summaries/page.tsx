@@ -166,14 +166,19 @@ function SummariesContent() {
   const currentDoc = documents.find((d) => d.id === selectedDocId);
 
   return (
-    <AppShell title="AI Study Summaries & Revision Notes">
+    <AppShell title="Google Gemini AI Summaries & Revision Notes">
       <div className="space-y-8">
         {/* Generator Controls Card */}
         <div className="card-weaviate p-6 sm:p-8 bg-white">
-          <div className="flex items-center justify-between gap-4 mb-2">
-            <h2 className="text-xl sm:text-2xl font-bold font-display tracking-tight text-[#1D156B]">
-              Generate High-Yield Revision Summaries
-            </h2>
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
+            <div className="flex items-center gap-2">
+              <span className="badge-weaviate-lime font-mono text-[11px] font-bold">
+                ✨ GEMINI 3.5 FLASH API
+              </span>
+              <h2 className="text-xl sm:text-2xl font-bold font-display tracking-tight text-[#1D156B]">
+                Google Gemini AI Chapter Summaries
+              </h2>
+            </div>
             {currentDoc?.is_custom && (
               <span className="badge-weaviate-lime font-mono">
                 CURRENT UPLOADED PDF
@@ -181,7 +186,7 @@ function SummariesContent() {
             )}
           </div>
           <p className="text-xs sm:text-sm text-[#4C4B84] mb-6">
-            Synthesize entire chapters, extract core definitions, or generate quick bullet points before exams.
+            Synthesize entire chapters, extract core definitions, or generate quick bullet points before exams directly with Google Gemini.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -257,12 +262,12 @@ function SummariesContent() {
               {loading ? (
                 <>
                   <RefreshCw className="h-4 w-4 animate-spin text-[#1D156B]" />
-                  <span>Synthesizing Summary...</span>
+                  <span>Gemini Synthesizing Summary...</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="h-4 w-4 text-[#1D156B]" />
-                  <span>Re-Generate AI Summary</span>
+                  <span>Generate Gemini Summary</span>
                 </>
               )}
             </button>
