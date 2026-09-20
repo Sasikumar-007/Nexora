@@ -106,6 +106,7 @@ function ChatContent() {
         { role: "user", content: userText },
       ];
 
+      const selectedDoc = documents.find((d) => d.id === selectedDocId);
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -113,6 +114,8 @@ function ChatContent() {
           messages: payloadMessages,
           mode,
           documentId: mode === "rag" ? selectedDocId : undefined,
+          documentTitle: mode === "rag" ? selectedDoc?.title : undefined,
+          documentText: mode === "rag" ? (selectedDoc?.extracted_text || selectedDoc?.extracted_text_snippet) : undefined,
         }),
       });
 

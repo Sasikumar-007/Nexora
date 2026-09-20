@@ -18,6 +18,7 @@ import {
   HelpCircle,
   Layers,
   MessageSquare,
+  Flame,
 } from "lucide-react";
 import { MOCK_DOCUMENTS } from "@/lib/demo/mock-data";
 import { DocumentRecord } from "@/types/database";
@@ -175,6 +176,12 @@ export default function MaterialsPage() {
                   <HelpCircle className="h-3.5 w-3.5 text-[#1D156B]" /> Practice Quiz
                 </Link>
                 <Link
+                  href={`/flashcards?docId=${justUploadedDoc.id}`}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white text-[#1D156B] text-xs font-bold border border-[#DEDCEF] hover:bg-[#F7F9FD] transition-all"
+                >
+                  <Flame className="h-3.5 w-3.5 text-[#1D156B]" /> Flashcards
+                </Link>
+                <Link
                   href={`/chat?docId=${justUploadedDoc.id}`}
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white text-[#1D156B] text-xs font-bold border border-[#DEDCEF] hover:bg-[#F7F9FD] transition-all"
                 >
@@ -277,7 +284,7 @@ export default function MaterialsPage() {
                 </div>
 
                 <div className="mt-6 pt-4 border-t border-[#DEDCEF] flex flex-col gap-2">
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-1.5">
                     <Link
                       href={`/chat?docId=${doc.id}`}
                       className="text-center py-1.5 rounded-full bg-[#CFDE22] text-xs font-bold text-[#1D156B] border border-[#B8C816] shadow-glow-lime-sm hover:bg-[#D8E633]"
@@ -295,6 +302,12 @@ export default function MaterialsPage() {
                       className="text-center py-1.5 rounded-full bg-white text-xs font-semibold text-[#1D156B] border border-[#DEDCEF] hover:bg-[#F7F9FD]"
                     >
                       Quiz
+                    </Link>
+                    <Link
+                      href={`/flashcards?docId=${doc.id}`}
+                      className="text-center py-1.5 rounded-full bg-[#F7F9FD] text-xs font-semibold text-[#1D156B] border border-[#DEDCEF] hover:bg-white"
+                    >
+                      Cards
                     </Link>
                   </div>
 

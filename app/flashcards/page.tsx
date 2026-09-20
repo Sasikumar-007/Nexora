@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import {
   Sparkles,
@@ -12,13 +13,24 @@ import {
   ChevronRight,
   Flame,
   Binary,
+  BookOpen,
+  FileText,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { MOCK_FLASHCARD_SETS } from "@/lib/demo/mock-data";
 import { Flashcard } from "@/types/database";
+import {
+  getStoredDocuments,
+  ExtendedDocumentRecord,
+} from "@/lib/documents/store";
 
-export default function FlashcardsPage() {
-  const [selectedDeckId, setSelectedDeckId] = useState(MOCK_FLASHCARD_SETS[0].id);
+function FlashcardsContent() {
+  const searchParams = useSearchParams();
+  const urlDocId = searchParams.get("docId") || "";
+
+  const [documents, setDocuments] = useState<ExtendedDocumentRecord[]>([]);
+  const [selectedDocId, setSelectedDocId] = useState<string>(urlDocId);
+  const [currentTitle, setCurrentTitle] = useState(MOCK_FLASHCARD_SETS[0].title);
   const [cards, setCards] = useState<Flashcard[]>(MOCK_FLASHCARD_SETS[0].cards);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -27,9 +39,79 @@ export default function FlashcardsPage() {
   const [genTopic, setGenTopic] = useState("");
   const [genCount, setGenCount] = useState(5);
 
-  const currentCard = cards[currentIndex] || cards[0];
+  // Load documents
+  useEffect(() => {
+    const docs = getStoredDocuments();
+    setDocuments(docs);
+
+    if (urlDocId) {
+      const doc = docs.find((d) => d.id === urlDocId);
+      if (doc) {
+        setSelectedDocId(doc.id);
+        setCurrentTitle(`${doc.title} Flashcards`);
+        setGenTopic(doc.title);
+        // Automatically generate flashcards from this document
+        generateFromDocument(doc);
+      }
+    }
+  }, [urlDocId]);
+
+  const generateFromDocument = async (doc: ExtendedDocumentRecord, count = 5) => {
+    setIsGenerating(true);
+    try {
+      const textToUse = doc.extracted_text || doc.extracted_text_snippet || "";
+      const res = await fetch("/api/flashcards/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: doc.title,
+          text: textToUse,
+          count,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.cards && data.cards.length > 0) {
+        setCards(data.cards);
+        setCurrentTitle(data.title || `${doc.title} Flashcards`);
+        setCurrentIndex(0);
+        setIsFlipped(false);
+      }
+    } catch (err) {
+      console.error("Flashcard generation error:", err);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleDocumentChange = (docId: string) => {
+    setSelectedDocId(docId);
+    if (!docId) {
+      // Default to mock set
+      setCards(MOCK_FLASHCARD_SETS[0].cards);
+      setCurrentTitle(MOCK_FLASHCARD_SETS[0].title);
+      setCurrentIndex(0);
+      setIsFlipped(false);
+      return;
+    }
+
+    const doc = documents.find((d) => d.id === docId);
+    if (doc) {
+      setCurrentTitle(`${doc.title} Flashcards`);
+      setGenTopic(doc.title);
+      generateFromDocument(doc);
+    }
+  };
+
+  const currentCard = cards[currentIndex] || cards[0] || {
+    id: "empty",
+    question: "No flashcards generated yet. Choose a document or click 'AI Generate Deck'.",
+    answer: "Flashcards allow you to practice active recall and test your retention.",
+    card_type: "qa",
+    mastery_status: "new",
+  };
   const masteredCount = cards.filter((c) => c.mastery_status === "mastered").length;
-  const progressPercent = Math.round((masteredCount / cards.length) * 100) || 0;
+  const progressPercent = cards.length > 0 ? Math.round((masteredCount / cards.length) * 100) : 0;
 
   // Keyboard navigation
   useEffect(() => {
@@ -49,18 +131,21 @@ export default function FlashcardsPage() {
   }, [currentIndex, cards, generatorOpen]);
 
   const nextCard = () => {
+    if (cards.length === 0) return;
     setIsFlipped(false);
     setCurrentIndex((prev) => (prev + 1) % cards.length);
   };
 
   const prevCard = () => {
+    if (cards.length === 0) return;
     setIsFlipped(false);
     setCurrentIndex((prev) => (prev - 1 + cards.length) % cards.length);
   };
 
   const markMastery = (status: "mastered" | "review") => {
+    if (!cards.length || !cards[currentIndex]) return;
     const updated = [...cards];
-    updated[currentIndex].mastery_status = status;
+    updated[currentIndex] = { ...updated[currentIndex], mastery_status: status };
     setCards(updated);
 
     if (status === "mastered") {
@@ -81,11 +166,15 @@ export default function FlashcardsPage() {
     e.preventDefault();
     setIsGenerating(true);
     try {
+      const activeDoc = documents.find((d) => d.id === selectedDocId);
+      const textToUse = activeDoc ? (activeDoc.extracted_text || activeDoc.extracted_text_snippet) : "";
+
       const res = await fetch("/api/flashcards/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topic: genTopic || "Computer Science Fundamentals",
+          topic: genTopic || activeDoc?.title || "Computer Science Fundamentals",
+          text: textToUse,
           count: genCount,
         }),
       });
@@ -93,6 +182,7 @@ export default function FlashcardsPage() {
       const data = await res.json();
       if (data.cards && data.cards.length > 0) {
         setCards(data.cards);
+        setCurrentTitle(data.title || `${genTopic} Flashcards`);
         setCurrentIndex(0);
         setIsFlipped(false);
         setGeneratorOpen(false);
@@ -109,27 +199,49 @@ export default function FlashcardsPage() {
       <div className="space-y-6 max-w-3xl mx-auto px-1 sm:px-4">
         {/* Top Header & Deck Picker */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
+          <div className="space-y-1">
             <div className="flex items-center gap-2 mb-1">
               <span className="badge-weaviate-lime font-mono">
                 <Flame className="h-3 w-3 fill-[#1D156B]" /> SPACED REPETITION
               </span>
               <span className="text-xs text-[#8396B1]">•</span>
               <span className="text-xs font-mono text-[#8396B1]">
-                Card {currentIndex + 1} of {cards.length}
+                Card {cards.length > 0 ? currentIndex + 1 : 0} of {cards.length}
               </span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold font-display text-[#1D156B] tracking-tight">
-              {MOCK_FLASHCARD_SETS[0].title}
+              {currentTitle}
             </h2>
+
+            {/* Document Selector */}
+            {documents.length > 0 && (
+              <div className="flex items-center gap-2 pt-1">
+                <BookOpen className="h-3.5 w-3.5 text-[#CFDE22] shrink-0" />
+                <span className="text-xs font-mono text-[#8396B1]">Document:</span>
+                <select
+                  value={selectedDocId}
+                  onChange={(e) => handleDocumentChange(e.target.value)}
+                  className="rounded-lg border border-[#DEDCEF] bg-white px-2.5 py-1 text-xs font-mono font-medium text-[#1D156B] focus:outline-none focus:border-[#1D156B]"
+                >
+                  <option value="">Default Syllabus Deck</option>
+                  {documents.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      📄 {d.title} ({d.page_count}p)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
-          <button
-            onClick={() => setGeneratorOpen(true)}
-            className="btn-weaviate-primary text-xs px-4 py-2 self-start sm:self-auto shrink-0 gap-1.5"
-          >
-            <Sparkles className="h-3.5 w-3.5" /> AI Generate Deck
-          </button>
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+            <button
+              onClick={() => setGeneratorOpen(true)}
+              className="btn-weaviate-primary text-xs px-4 py-2 gap-1.5"
+            >
+              <Sparkles className="h-3.5 w-3.5" /> AI Generate Deck
+            </button>
+          </div>
         </div>
 
         {/* Stepped Progress Indicator */}
@@ -281,6 +393,30 @@ export default function FlashcardsPage() {
               </p>
 
               <form onSubmit={handleGenerateDeck} className="space-y-4">
+                {documents.length > 0 && (
+                  <div>
+                    <label className="block text-xs font-mono font-bold uppercase text-[#8396B1] mb-1">
+                      Source Document (Optional)
+                    </label>
+                    <select
+                      value={selectedDocId}
+                      onChange={(e) => {
+                        setSelectedDocId(e.target.value);
+                        const doc = documents.find((d) => d.id === e.target.value);
+                        if (doc) setGenTopic(doc.title);
+                      }}
+                      className="w-full rounded-xl border border-[#DEDCEF] bg-white px-4 py-2.5 text-sm font-medium text-[#1D156B] focus:outline-none"
+                    >
+                      <option value="">Custom Topic (No document attached)</option>
+                      {documents.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          📄 {d.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-xs font-mono font-bold uppercase text-[#8396B1] mb-1">
                     Study Topic
@@ -332,5 +468,21 @@ export default function FlashcardsPage() {
         )}
       </div>
     </AppShell>
+  );
+}
+
+export default function FlashcardsPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell title="Active Recall Flashcards">
+          <div className="p-8 text-center text-sm font-mono text-[#8396B1]">
+            Loading study decks...
+          </div>
+        </AppShell>
+      }
+    >
+      <FlashcardsContent />
+    </Suspense>
   );
 }
