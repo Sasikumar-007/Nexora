@@ -6,12 +6,13 @@ import { ChatMessagePayload } from "@/types/ai";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { messages, documentId, documentTitle, documentText, mode } = body as {
+    const { messages, documentId, documentTitle, documentText, mode, isVoice } = body as {
       messages: ChatMessagePayload[];
       documentId?: string;
       documentTitle?: string;
       documentText?: string;
       mode?: "general" | "rag";
+      isVoice?: boolean;
     };
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -23,8 +24,9 @@ export async function POST(req: NextRequest) {
 
     const lastMessage = messages[messages.length - 1];
     let citations: any[] = [];
-    let systemPrompt =
-      "You are an encouraging, highly knowledgeable AI academic tutor. Explain concepts step-by-step with clear definitions, analogies, and practical examples.";
+    let systemPrompt = isVoice
+      ? "You are a real-time conversational AI voice tutor. Explain concepts warmly, clearly, and directly in 2 to 3 concise spoken sentences. Avoid markdown, asterisks, bullet points, and headers."
+      : "You are an encouraging, highly knowledgeable AI academic tutor. Explain concepts step-by-step with clear definitions, analogies, and practical examples.";
     let retrievedContext = "";
 
     // If RAG mode or document specified, retrieve context
@@ -56,6 +58,7 @@ export async function POST(req: NextRequest) {
       documentTitle,
       context: retrievedContext,
       temperature: 0.4,
+      isVoice,
     });
 
     return NextResponse.json({

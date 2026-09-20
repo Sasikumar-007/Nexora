@@ -16,6 +16,7 @@ export interface AICompletionOptions {
   model?: string;
   documentTitle?: string;
   context?: string;
+  isVoice?: boolean;
 }
 
 /**
@@ -60,9 +61,11 @@ export async function generateChatResponse(
   if (isConfigured) {
     try {
       const messages = [];
-      if (options.systemPrompt) {
-        messages.push({ role: "system", content: options.systemPrompt });
+      let sys = options.systemPrompt || "You are an expert academic tutor.";
+      if (options.isVoice) {
+        sys += " IMPORTANT FOR VOICE AGENT: Provide a direct, natural, conversational spoken answer in 2 to 3 concise sentences. Do NOT use markdown symbols, asterisks, headers, or bullet lists.";
       }
+      messages.push({ role: "system", content: sys });
       messages.push(...options.messages);
 
       const res = await fetch(`${apiUrl}/chat/completions`, {
@@ -75,7 +78,7 @@ export async function generateChatResponse(
           model,
           messages,
           temperature: options.temperature ?? 0.4,
-          max_tokens: options.maxTokens ?? 1500,
+          max_tokens: options.isVoice ? 250 : (options.maxTokens ?? 1500),
         }),
       });
 
@@ -101,6 +104,7 @@ export async function generateChatResponse(
     documentTitle: options.documentTitle,
     context: options.context || options.systemPrompt,
     conversationHistory: options.messages,
+    isVoice: options.isVoice,
   });
 }
 

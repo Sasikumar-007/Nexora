@@ -70,13 +70,20 @@ export function generateDynamicChatResponse(params: {
   documentTitle?: string;
   context?: string;
   conversationHistory?: Array<{ role: string; content: string }>;
+  isVoice?: boolean;
 }): string {
-  const { query, documentTitle, context } = params;
+  const { query, documentTitle, context, isVoice } = params;
   const cleanQuery = query.trim();
   const lowerQuery = cleanQuery.toLowerCase();
 
   // 1. Handle Greetings
   if (/^(hi|hello|hey|good morning|good afternoon)\b/i.test(cleanQuery)) {
+    if (isVoice) {
+      if (documentTitle) {
+        return `Hello! I am your real-time AI Voice Tutor connected to "${documentTitle}". Ask me any question or ask for a concept review.`;
+      }
+      return `Hello! I am your real-time AI Voice Tutor. Speak your question aloud, and I will explain the solution step by step.`;
+    }
     if (documentTitle) {
       return `Hello! I am your AI Study Companion for **"${documentTitle}"**. I have indexed your document. Ask me any question, ask for step-by-step derivations, or request a practice quiz on this syllabus!`;
     }
@@ -113,6 +120,13 @@ export function generateDynamicChatResponse(params: {
     .trim() || "this subject";
 
   const capitalizedSubject = subject.charAt(0).toUpperCase() + subject.slice(1);
+
+  if (isVoice) {
+    if (bestMatches.length > 0) {
+      return `Based on your course notes, regarding ${subject}: ${bestMatches[0]} ${bestMatches[1] ? bestMatches[1] : ""}`;
+    }
+    return `Regarding ${capitalizedSubject}: It is a fundamental concept in your syllabus. The core principle requires identifying the initial conditions and applying theoretical derivations step by step. What specific problem would you like to explore next?`;
+  }
 
   if (bestMatches.length > 0) {
     return `### Academic Breakdown: ${capitalizedSubject}
