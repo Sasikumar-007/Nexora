@@ -215,7 +215,7 @@ function QuizzesContent() {
     const doc = documents.find((d) => d.id === selectedDocId);
     await generateQuizFromContent({
       topic: genTopic || doc?.title || "Exam Preparation",
-      text: doc?.extracted_text || doc?.extracted_text_snippet,
+      text: doc?.extracted_text || doc?.extracted_text_snippet || undefined,
       difficulty: genDifficulty,
       docId: doc?.id,
     });
@@ -265,7 +265,7 @@ function QuizzesContent() {
                 if (currentDoc) {
                   generateQuizFromContent({
                     topic: currentDoc.title,
-                    text: currentDoc.extracted_text || currentDoc.extracted_text_snippet,
+                    text: currentDoc.extracted_text || currentDoc.extracted_text_snippet || undefined,
                     difficulty: "medium",
                     docId: currentDoc.id,
                   });
@@ -426,7 +426,7 @@ function QuizzesContent() {
                     if (currentDoc) {
                       generateQuizFromContent({
                         topic: currentDoc.title,
-                        text: currentDoc.extracted_text || currentDoc.extracted_text_snippet,
+                        text: currentDoc.extracted_text || currentDoc.extracted_text_snippet || undefined,
                         difficulty: "medium",
                         docId: currentDoc.id,
                       });
