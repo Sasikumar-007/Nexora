@@ -43,19 +43,18 @@ export async function callGoogleGemini(params: {
   maxTokens?: number;
   isVoice?: boolean;
 }): Promise<string | null> {
-  const models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"];
+  const models = ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-flash-latest"];
 
   let systemText = params.systemPrompt || "You are an expert academic tutor.";
   if (params.isVoice) {
     systemText += " IMPORTANT FOR VOICE AGENT: Provide a direct, natural, conversational spoken answer in 2 to 3 concise sentences. Do NOT use markdown symbols, asterisks, headers, or bullet lists.";
   }
 
-  // Format message history
-  let conversationText = "";
-  for (const m of params.messages) {
-    conversationText += `${m.role === "user" ? "Student" : "Tutor"}: ${m.content}\n`;
-  }
-  conversationText += "Tutor:";
+  // Format message history natively for Gemini
+  const contents = params.messages.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
 
   for (const model of models) {
     try {
@@ -67,15 +66,10 @@ export async function callGoogleGemini(params: {
           system_instruction: {
             parts: [{ text: systemText }],
           },
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: conversationText }],
-            },
-          ],
+          contents,
           generationConfig: {
             temperature: params.temperature ?? (params.isVoice ? 0.3 : 0.4),
-            maxOutputTokens: params.isVoice ? 250 : (params.maxTokens ?? 1500),
+            maxOutputTokens: params.isVoice ? 600 : (params.maxTokens ?? 1500),
           },
         }),
       });
@@ -105,7 +99,7 @@ export async function callGoogleGeminiJson<T>(params: {
   prompt: string;
   systemPrompt?: string;
 }): Promise<T | null> {
-  const models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"];
+  const models = ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-flash-latest"];
   const fullPrompt = `${params.systemPrompt || "You are an expert academic tutor."}\n\n` +
     `CRITICAL: Return ONLY a valid, raw JSON object matching the requested schema. No markdown formatting, no backticks.\n\n` +
     `Prompt:\n${params.prompt}`;
@@ -151,18 +145,18 @@ export async function callGoogleGeminiJson<T>(params: {
 export function getAIConfig(customKey?: string, customUrl?: string, customModel?: string) {
   const geminiKey = getGeminiKey(customKey);
   const apiKey = (customKey || geminiKey || process.env.AI_API_KEY || "").trim();
-  let apiUrl = (customUrl || process.env.AI_API_URL || "https://api.openai.com/v1").trim();
-  let model = (customModel || process.env.AI_MODEL || "gpt-4o-mini").trim();
+  let apiUrl = (customUrl || process.env.AI_API_URL || "https://generativelanguage.googleapis.com/v1beta/openai/").trim();
+  let model = (customModel || process.env.AI_MODEL || "gemini-3.5-flash").trim();
 
-  // Auto-detect Groq keys (Free & fast)
+  // Auto-detect Groq keys
   if (apiKey.startsWith("gsk_")) {
     if (!customUrl) apiUrl = "https://api.groq.com/openai/v1";
-    if (!customModel || customModel.includes("gpt")) model = "llama-3.3-70b-versatile";
+    if (!customModel || customModel.includes("gemini")) model = "llama-3.3-70b-versatile";
   }
   // Auto-detect Google Gemini keys
   else if (apiKey.startsWith("AIzaSy") || geminiKey) {
     if (!customUrl) apiUrl = "https://generativelanguage.googleapis.com/v1beta/openai/";
-    if (!customModel || customModel.includes("gpt")) model = "gemini-1.5-flash";
+    if (!customModel) model = "gemini-3.5-flash";
   }
 
   const isConfigured = !!(apiKey && apiKey.length > 5 && !apiKey.includes("placeholder"));

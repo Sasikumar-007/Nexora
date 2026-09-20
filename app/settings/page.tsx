@@ -16,7 +16,7 @@ export default function SettingsPage() {
   const [targetExam, setTargetExam] = useState(MOCK_PROFILE.target_exam);
   const [dailyGoal, setDailyGoal] = useState(MOCK_PROFILE.daily_study_goal_mins);
   const [customApiKey, setCustomApiKey] = useState("");
-  const [aiProvider, setAiProvider] = useState("openai");
+  const [aiProvider, setAiProvider] = useState("gemini");
   const [studyReminders, setStudyReminders] = useState(true);
   const [streakAlerts, setStreakAlerts] = useState(true);
   const [saved, setSaved] = useState(false);
@@ -98,8 +98,8 @@ export default function SettingsPage() {
                   onChange={(e) => setAiProvider(e.target.value)}
                   className="w-full rounded-xl border border-[#DEDCEF] bg-white p-2.5 text-xs sm:text-sm text-[#1D156B] focus:outline-none"
                 >
+                  <option value="gemini">Google Gemini (Active Primary Model)</option>
                   <option value="openai">OpenAI (GPT-4o / GPT-4o-mini)</option>
-                  <option value="gemini">Google Gemini (OpenAI Compatibility Mode)</option>
                   <option value="groq">Groq (Llama 3 70B Fast Inference)</option>
                   <option value="openrouter">OpenRouter Multi-Model</option>
                 </select>
@@ -113,7 +113,7 @@ export default function SettingsPage() {
                   type="password"
                   value={customApiKey}
                   onChange={(e) => setCustomApiKey(e.target.value)}
-                  placeholder="sk-..."
+                  placeholder="AIzaSy... or AQ.Ab8..."
                   className="w-full rounded-xl border border-[#DEDCEF] p-2.5 text-xs sm:text-sm font-mono text-[#1D156B] focus:outline-none focus:border-[#1D156B]"
                 />
                 <span className="text-[11px] font-mono text-[#8396B1] mt-1 block">
