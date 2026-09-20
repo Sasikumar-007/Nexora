@@ -45,6 +45,8 @@ function VoiceTutorContent() {
   const transcriptRef = useRef<string>("");
   const continuousModeRef = useRef<boolean>(false);
   const isSpeakingRef = useRef<boolean>(false);
+  const isListeningRef = useRef<boolean>(false);
+  const silenceTimerRef = useRef<any>(null);
 
   useEffect(() => {
     continuousModeRef.current = continuousMode;
@@ -65,31 +67,48 @@ function VoiceTutorContent() {
     }
   }, [initialDocId]);
 
-  // Initialize Speech Recognition
+  // Initialize Speech Recognition with extended conversation time
   useEffect(() => {
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (SpeechRecognition) {
       const rec = new SpeechRecognition();
-      rec.continuous = false;
+      rec.continuous = true;
       rec.interimResults = true;
       rec.lang = "en-US";
 
       rec.onstart = () => {
         setIsListening(true);
+        isListeningRef.current = true;
       };
 
       rec.onresult = (event: any) => {
-        const text = Array.from(event.results)
-          .map((r: any) => r[0].transcript)
-          .join("");
-        transcriptRef.current = text;
-        setTranscript(text);
+        let fullText = "";
+        for (let i = 0; i < event.results.length; i++) {
+          fullText += event.results[i][0].transcript + " ";
+        }
+        fullText = fullText.trim();
+        transcriptRef.current = fullText;
+        setTranscript(fullText);
+
+        // Extended conversational pause window: 3.5 seconds of silence before submission
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current);
+        }
+        silenceTimerRef.current = setTimeout(() => {
+          if (transcriptRef.current.trim().length > 0 && isListeningRef.current) {
+            stopListening();
+          }
+        }, 3500);
       };
 
       rec.onend = () => {
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current);
+        }
         setIsListening(false);
+        isListeningRef.current = false;
         // Automatic submission on speech pause if text was captured
         const captured = transcriptRef.current.trim();
         if (captured.length > 0) {
@@ -99,13 +118,20 @@ function VoiceTutorContent() {
 
       rec.onerror = (e: any) => {
         console.warn("Speech recognition notice:", e.error);
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current);
+        }
         setIsListening(false);
+        isListeningRef.current = false;
       };
 
       recognitionRef.current = rec;
     }
 
     return () => {
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+      }
       if (typeof window !== "undefined" && window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
@@ -127,6 +153,10 @@ function VoiceTutorContent() {
       isSpeakingRef.current = false;
     }
 
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+    }
+
     transcriptRef.current = "";
     setTranscript("");
 
@@ -138,9 +168,13 @@ function VoiceTutorContent() {
   };
 
   const stopListening = () => {
-    if (recognitionRef.current && isListening) {
-      recognitionRef.current.stop();
-      // On stop, onend will trigger and submit transcriptRef.current
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+    }
+    if (recognitionRef.current && isListeningRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (err) {}
     }
   };
 
@@ -188,7 +222,7 @@ function VoiceTutorContent() {
 
     const readableText = cleanTextForSpeech(text);
     const utterance = new SpeechSynthesisUtterance(readableText);
-    utterance.rate = 1.0;
+    utterance.rate = 0.95;
     utterance.pitch = 1.0;
 
     const voice = getNaturalVoice();
@@ -204,11 +238,11 @@ function VoiceTutorContent() {
     utterance.onend = () => {
       setIsSpeaking(false);
       isSpeakingRef.current = false;
-      // If hands-free conversational mode is active, start listening for student's next question!
+      // If hands-free conversational mode is active, give 1.2s pause then listen
       if (continuousModeRef.current) {
         setTimeout(() => {
           startListening();
-        }, 600);
+        }, 1200);
       }
     };
 
@@ -406,12 +440,12 @@ function VoiceTutorContent() {
             <div className="mt-6">
               <span className="badge-weaviate-lime font-mono">
                 {isListening
-                  ? "LISTENING... (PAUSE OR TAP TO SUBMIT)"
+                  ? "LISTENING... (EXTENDED SPEAKING TIME • 3.5S SILENCE OR TAP SUBMIT)"
                   : isSpeaking
-                  ? "AI VERBALIZING SOLUTION..."
+                  ? "GEMINI VERBALIZING IN-DEPTH EXPLANATION..."
                   : isLoading
-                  ? "AI SYNTHESIZING VOICE ANSWER..."
-                  : "READY // TAP OR PUSH TO SPEAK"}
+                  ? "GEMINI SYNTHESIZING SPOKEN TUTOR ANSWER..."
+                  : "READY // TAP OR PUSH TO SPEAK (EXTENDED DURATION)"}
               </span>
             </div>
 

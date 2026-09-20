@@ -30,6 +30,8 @@ Input text excerpt: ${text ? text.slice(0, 3000) : "General course study materia
       systemPrompt:
         "You are an academic summary generator for university and competitive exam students.",
       schemaSample: sampleSchema,
+      topic: topic || "Uploaded Course Material",
+      text: text || "",
     });
 
     return NextResponse.json({

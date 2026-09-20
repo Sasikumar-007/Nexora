@@ -43,11 +43,11 @@ export async function callGoogleGemini(params: {
   maxTokens?: number;
   isVoice?: boolean;
 }): Promise<string | null> {
-  const models = ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-flash-latest"];
+  const models = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.6-flash"];
 
   let systemText = params.systemPrompt || "You are an expert academic tutor.";
   if (params.isVoice) {
-    systemText += " IMPORTANT FOR VOICE AGENT: Provide a direct, natural, conversational spoken answer in 2 to 3 concise sentences. Do NOT use markdown symbols, asterisks, headers, or bullet lists.";
+    systemText += " IMPORTANT FOR VOICE AGENT: Provide a comprehensive, engaging spoken explanation (4 to 6 natural sentences). Clearly explain the core intuition, an example, and key exam insights. Speak naturally in conversational sentences without any markdown symbols, asterisks, bullet points, or headers.";
   }
 
   // Format message history natively for Gemini with role alternation
@@ -85,8 +85,8 @@ export async function callGoogleGemini(params: {
           },
           contents,
           generationConfig: {
-            temperature: params.temperature ?? (params.isVoice ? 0.3 : 0.4),
-            maxOutputTokens: params.isVoice ? 600 : (params.maxTokens ?? 1500),
+            temperature: params.temperature ?? (params.isVoice ? 0.35 : 0.4),
+            maxOutputTokens: params.isVoice ? 1200 : (params.maxTokens ?? 2000),
           },
         }),
       });
@@ -109,14 +109,14 @@ export async function callGoogleGemini(params: {
 }
 
 /**
- * Direct native Google Gemini API caller for JSON responses (Quizzes, Flashcards)
+ * Direct native Google Gemini API caller for JSON responses (Quizzes, Flashcards, Summaries)
  */
 export async function callGoogleGeminiJson<T>(params: {
   apiKey: string;
   prompt: string;
   systemPrompt?: string;
 }): Promise<T | null> {
-  const models = ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-flash-latest"];
+  const models = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.6-flash"];
   const fullPrompt = `${params.systemPrompt || "You are an expert academic tutor."}\n\n` +
     `CRITICAL: Return ONLY a valid, raw JSON object matching the requested schema. No markdown formatting, no backticks.\n\n` +
     `Prompt:\n${params.prompt}`;
@@ -145,9 +145,22 @@ export async function callGoogleGeminiJson<T>(params: {
         const data = await res.json();
         const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (rawText) {
-          const cleaned = rawText.replace(/```json\n?|\n?```/g, "").trim();
+          let cleaned = rawText.trim();
+          const jsonMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+          if (jsonMatch) {
+            cleaned = jsonMatch[1].trim();
+          } else {
+            const firstBrace = cleaned.indexOf("{");
+            const lastBrace = cleaned.lastIndexOf("}");
+            if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+              cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+            }
+          }
           return JSON.parse(cleaned) as T;
         }
+      } else {
+        const errText = await res.text();
+        console.warn(`[Gemini JSON ${model}] Notice (${res.status}):`, errText);
       }
     } catch (err: any) {
       console.warn(`[Gemini JSON ${model}] Warning:`, err.message);

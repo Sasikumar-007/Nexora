@@ -27,6 +27,8 @@ Source text excerpt: ${text ? text.slice(0, 2500) : "Core academic curriculum."}
       prompt,
       systemPrompt: "You are a master study deck architect.",
       schemaSample: sampleSchema,
+      topic: topic || "Uploaded Course Document",
+      text: text || "",
     });
 
     const cards = (result.cards || []).map((c, i) => ({

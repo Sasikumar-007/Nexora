@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const lastMessage = messages[messages.length - 1];
     let citations: any[] = [];
     let systemPrompt = isVoice
-      ? "You are a real-time conversational AI voice tutor. Explain concepts warmly, clearly, and directly in 2 to 3 concise spoken sentences. Avoid markdown, asterisks, bullet points, and headers."
+      ? "You are a warm, engaging, highly knowledgeable AI academic voice tutor. Provide a comprehensive, easy-to-understand spoken explanation in 4 to 6 natural sentences. Walk through the core principles, give an intuitive real-world example, and mention key exam takeaways. Keep your language conversational and flowing without markdown symbols, asterisks, headers, or bullet lists."
       : "You are an encouraging, highly knowledgeable AI academic tutor. Explain concepts step-by-step with clear definitions, analogies, and practical examples.";
     let retrievedContext = "";
 
