@@ -27,7 +27,7 @@ export function getGeminiKey(customKey?: string): string {
     customKey ||
     process.env.GEMINI_API_KEY ||
     process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
-    (process.env.AI_API_KEY?.startsWith("AIzaSy") ? process.env.AI_API_KEY : "") ||
+    (process.env.AI_API_KEY?.startsWith("AQ.") || process.env.AI_API_KEY?.startsWith("AIzaSy") ? process.env.AI_API_KEY : "") ||
     ""
   ).trim();
 }
@@ -50,11 +50,28 @@ export async function callGoogleGemini(params: {
     systemText += " IMPORTANT FOR VOICE AGENT: Provide a direct, natural, conversational spoken answer in 2 to 3 concise sentences. Do NOT use markdown symbols, asterisks, headers, or bullet lists.";
   }
 
-  // Format message history natively for Gemini
-  const contents = params.messages.map((m) => ({
-    role: m.role === "assistant" ? "model" : "user",
-    parts: [{ text: m.content }],
-  }));
+  // Format message history natively for Gemini with role alternation
+  const sanitizedContents: Array<{ role: "user" | "model"; parts: [{ text: string }] }> = [];
+  for (const m of params.messages) {
+    if (!m.content || !m.content.trim()) continue;
+    const role = m.role === "assistant" ? "model" : "user";
+    if (sanitizedContents.length > 0 && sanitizedContents[sanitizedContents.length - 1].role === role) {
+      // Merge consecutive same-role messages
+      sanitizedContents[sanitizedContents.length - 1].parts[0].text += "\n\n" + m.content.trim();
+    } else {
+      sanitizedContents.push({
+        role,
+        parts: [{ text: m.content.trim() }],
+      });
+    }
+  }
+
+  // Ensure there is at least one user message
+  if (sanitizedContents.length === 0) {
+    sanitizedContents.push({ role: "user", parts: [{ text: "Hello" }] });
+  }
+
+  const contents = sanitizedContents;
 
   for (const model of models) {
     try {

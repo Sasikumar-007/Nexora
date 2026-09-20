@@ -74,7 +74,7 @@ function ChatContent() {
       id: "m-1",
       role: "assistant",
       content:
-        "Hello! I am your **AI Learning Companion**. You can ask me to explain any difficult concept, break down a problem step-by-step, or query your uploaded course PDFs to get exact page citations from your syllabus. What topic would you like to master today?",
+        "Hello! I am your **Google Gemini AI Tutor**, powered directly by the **Gemini 3.5 Flash API**. You can ask me to solve equations, break down complex concepts step-by-step, or query your uploaded course PDFs to get exact syllabus citations. What topic would you like to master today?",
     },
   ]);
 
@@ -192,11 +192,14 @@ function ChatContent() {
   };
 
   return (
-    <AppShell title="AI Study Tutor & Document Q&A">
+    <AppShell title="Google Gemini AI Tutor & Document Q&A">
       <div className="flex flex-col h-[calc(100vh-10rem)] card-weaviate overflow-hidden bg-white">
         {/* Tutor Topbar & Mode Switcher */}
         <div className="border-b border-[#DEDCEF] bg-[#F7F9FD] px-6 py-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
+            <span className="badge-weaviate-lime font-mono text-[11px] font-bold">
+              ✨ GEMINI 3.5 FLASH API
+            </span>
             <button
               onClick={() => setMode("general")}
               className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
@@ -205,7 +208,7 @@ function ChatContent() {
                   : "bg-white text-[#4C4B84] border border-[#DEDCEF] hover:bg-[#F7F9FD]"
               }`}
             >
-              General AI Tutor
+              General Gemini Tutor
             </button>
             <button
               onClick={() => setMode("rag")}
@@ -216,7 +219,7 @@ function ChatContent() {
               }`}
             >
               <BookOpen className="h-3.5 w-3.5" />
-              PDF Study Q&A Mode
+              PDF Notes Q&A Mode
             </button>
           </div>
 

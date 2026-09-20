@@ -35,7 +35,7 @@ function VoiceTutorContent() {
   const [textInput, setTextInput] = useState("");
   const [continuousMode, setContinuousMode] = useState(false);
   const [response, setResponse] = useState(
-    "Hello! I am your real-time AI Voice Tutor. Click 'Push to Speak' and talk, or choose an uploaded syllabus PDF. I will listen to your voice and answer aloud in real time."
+    "Hello! I am your Google Gemini Voice Tutor, powered directly by Google Gemini 3.5 Flash. Click 'Push to Speak' or choose a syllabus PDF to ask questions and hear real-time AI spoken explanations."
   );
   const [history, setHistory] = useState<
     Array<{ speaker: "user" | "tutor"; text: string }>
@@ -299,7 +299,7 @@ function VoiceTutorContent() {
   ];
 
   return (
-    <AppShell title="AI Voice Tutor & Real-Time Audio Learning">
+    <AppShell title="Google Gemini Voice Tutor & Real-Time Audio">
       <div className="space-y-6 max-w-4xl mx-auto px-1 sm:px-4">
         {/* Document Context & Conversational Mode Toolbar */}
         <div className="card-weaviate p-4 bg-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
