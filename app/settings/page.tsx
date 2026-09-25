@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import {
   Key,
@@ -10,19 +10,35 @@ import {
   Save,
 } from "lucide-react";
 import { MOCK_PROFILE } from "@/lib/demo/mock-data";
+import { useUser } from "@/lib/auth/user-context";
 
 export default function SettingsPage() {
-  const [fullName, setFullName] = useState(MOCK_PROFILE.full_name || "Alex Morgan");
-  const [targetExam, setTargetExam] = useState(MOCK_PROFILE.target_exam);
-  const [dailyGoal, setDailyGoal] = useState(MOCK_PROFILE.daily_study_goal_mins);
+  const { user, updateProfile } = useUser();
+  const [fullName, setFullName] = useState(user.fullName || "Alex Morgan");
+  const [targetExam, setTargetExam] = useState(user.targetExam || MOCK_PROFILE.target_exam);
+  const [dailyGoal, setDailyGoal] = useState(user.dailyStudyGoal || MOCK_PROFILE.daily_study_goal_mins);
   const [customApiKey, setCustomApiKey] = useState("");
   const [aiProvider, setAiProvider] = useState("gemini");
   const [studyReminders, setStudyReminders] = useState(true);
   const [streakAlerts, setStreakAlerts] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (user.fullName) setFullName(user.fullName);
+    if (user.targetExam) setTargetExam(user.targetExam);
+    if (user.dailyStudyGoal) setDailyGoal(user.dailyStudyGoal);
+  }, [user]);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaving(true);
+    await updateProfile({
+      fullName,
+      targetExam,
+      dailyGoal,
+    });
+    setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
@@ -52,6 +68,18 @@ export default function SettingsPage() {
 
               <div>
                 <label className="block text-xs font-mono font-bold uppercase text-[#8396B1] mb-1.5">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  disabled
+                  value={user.email || "student@university.edu"}
+                  className="w-full rounded-xl border border-[#DEDCEF] bg-[#F7F9FD] p-2.5 text-xs sm:text-sm text-[#4C4B84] cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono font-bold uppercase text-[#8396B1] mb-1.5">
                   Target Examination / Degree
                 </label>
                 <input
@@ -73,7 +101,7 @@ export default function SettingsPage() {
                   step="15"
                   value={dailyGoal}
                   onChange={(e) => setDailyGoal(Number(e.target.value))}
-                  className="w-full accent-[#CFDE22]"
+                  className="w-full accent-[#CFDE22] mt-3"
                 />
               </div>
             </div>
@@ -176,9 +204,10 @@ export default function SettingsPage() {
             <div className="ml-auto">
               <button
                 type="submit"
+                disabled={saving}
                 className="btn-weaviate-primary text-xs px-7 py-3 gap-2"
               >
-                <Save className="h-4 w-4" /> Save Settings
+                <Save className="h-4 w-4" /> {saving ? "Saving..." : "Save Settings"}
               </button>
             </div>
           </div>

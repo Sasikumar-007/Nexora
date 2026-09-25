@@ -34,6 +34,8 @@ export const metadata: Metadata = {
   },
 };
 
+import { UserProvider } from "@/lib/auth/user-context";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -50,7 +52,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/logo.png" />
       </head>
       <body className="min-h-screen bg-[#F7F9FD] text-[#1D156B] font-sans antialiased selection:bg-[#DCF090] selection:text-[#1D156B]">
-        {children}
+        <UserProvider>{children}</UserProvider>
       </body>
     </html>
   );

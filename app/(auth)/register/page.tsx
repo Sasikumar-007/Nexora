@@ -5,11 +5,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { NexoraLogo } from "@/components/ui/nexora-logo";
-import { GraduationCap, Lock, Mail, User, AlertCircle } from "lucide-react";
+import { Lock, Mail, User, AlertCircle } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { useUser } from "@/lib/auth/user-context";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { loginUser } = useUser();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,15 +24,16 @@ export default function RegisterPage() {
     setLoading(true);
 
     if (!isSupabaseConfigured()) {
+      loginUser(email, fullName);
       setTimeout(() => {
         router.push("/dashboard");
-      }, 500);
+      }, 300);
       return;
     }
 
     try {
       const supabase = createClient();
-      const { error: authError } = await supabase.auth.signUp({
+      const { data, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -43,6 +46,7 @@ export default function RegisterPage() {
       if (authError) {
         setError(authError.message);
       } else {
+        loginUser(email, fullName, data?.user?.id);
         router.push("/dashboard");
       }
     } catch (err: any) {

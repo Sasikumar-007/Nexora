@@ -43,7 +43,12 @@ export async function callGoogleGemini(params: {
   maxTokens?: number;
   isVoice?: boolean;
 }): Promise<string | null> {
-  const models = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.6-flash"];
+  const models = [
+    "gemini-3.8-flash",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-flash-latest",
+  ];
 
   let systemText = params.systemPrompt || "You are an expert academic tutor.";
   if (params.isVoice) {
@@ -117,7 +122,12 @@ export async function callGoogleGeminiJson<T>(params: {
   systemPrompt?: string;
   schemaSample?: Record<string, any>;
 }): Promise<T | null> {
-  const models = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.6-flash"];
+  const models = [
+    "gemini-3.8-flash",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-flash-latest",
+  ];
   let schemaInstruction = "";
   if (params.schemaSample) {
     schemaInstruction = `\n\nREQUIRED JSON SCHEMA STRUCTURE:\n${JSON.stringify(params.schemaSample, null, 2)}\n\n`;

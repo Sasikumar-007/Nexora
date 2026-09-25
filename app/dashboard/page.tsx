@@ -32,8 +32,10 @@ import {
   getStoredDocuments,
   ExtendedDocumentRecord,
 } from "@/lib/documents/store";
+import { useUser } from "@/lib/auth/user-context";
 
 export default function DashboardPage() {
+  const { user } = useUser();
   const [documents, setDocuments] = useState<ExtendedDocumentRecord[]>(MOCK_DOCUMENTS);
   const [tasks, setTasks] = useState(MOCK_REVISION_PLAN.tasks);
   const [readinessScore, setReadinessScore] = useState(84);
@@ -66,11 +68,11 @@ export default function DashboardPage() {
             </div>
 
             <h1 className="text-2xl sm:text-4xl font-extrabold font-display tracking-tight text-[#1D156B]">
-              Welcome back, {MOCK_PROFILE.full_name}.
+              Welcome back, {user.fullName || user.email}.
             </h1>
 
             <p className="text-[#4C4B84] text-sm sm:text-base mt-2 leading-relaxed">
-              Target syllabus: <strong className="text-[#1D156B] font-semibold">{MOCK_PROFILE.target_exam}</strong>. Your uploaded course PDFs are processed and ready for interactive Q&A and active recall.
+              Target syllabus: <strong className="text-[#1D156B] font-semibold">{user.targetExam || MOCK_PROFILE.target_exam}</strong>. Your uploaded course PDFs are processed and ready for interactive Q&A and active recall.
             </p>
 
             <div className="flex flex-wrap gap-3 mt-6">

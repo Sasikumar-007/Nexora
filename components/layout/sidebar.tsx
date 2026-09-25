@@ -22,6 +22,7 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUser } from "@/lib/auth/user-context";
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -43,6 +44,7 @@ const navItems = [
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const { user, logout } = useUser();
 
   return (
     <>
@@ -126,27 +128,37 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* User Footer Profile */}
         <div className="border-t border-[#DEDCEF] p-4 bg-[#F7F9FD]">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="h-9 w-9 rounded-xl bg-[#1D156B] text-[#CFDE22] flex items-center justify-center font-mono font-bold text-xs">
-                AM
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <div
+                className="h-9 w-9 shrink-0 rounded-xl bg-[#1D156B] text-[#CFDE22] flex items-center justify-center font-mono font-bold text-xs uppercase shadow-sm select-none"
+                title={user.fullName || user.email}
+              >
+                {user.initials}
               </div>
-              <div className="overflow-hidden">
-                <p className="text-xs font-bold truncate text-[#1D156B]">
-                  Alex Morgan
+              <div className="overflow-hidden min-w-0">
+                <p
+                  className="text-xs font-bold truncate text-[#1D156B]"
+                  title={user.fullName || user.email}
+                >
+                  {user.fullName || user.email}
                 </p>
-                <p className="text-[11px] text-[#8396B1] truncate font-mono">
-                  Student Scholar
+                <p
+                  className="text-[11px] text-[#8396B1] truncate font-mono"
+                  title={user.email || user.role}
+                >
+                  {user.email || user.role}
                 </p>
               </div>
             </div>
-            <Link
-              href="/login"
+            <button
+              onClick={() => logout()}
+              type="button"
               title="Sign Out"
-              className="p-2 text-[#8396B1] hover:text-[#1D156B] hover:bg-white rounded-lg border border-transparent hover:border-[#DEDCEF] transition-colors"
+              className="p-2 text-[#8396B1] hover:text-red-600 hover:bg-white rounded-lg border border-transparent hover:border-[#DEDCEF] transition-colors shrink-0 cursor-pointer"
             >
               <LogOut className="h-4 w-4" />
-            </Link>
+            </button>
           </div>
         </div>
       </aside>

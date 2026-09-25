@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const lastMessage = messages[messages.length - 1];
     let citations: any[] = [];
     let systemPrompt = isVoice
-      ? "You are a warm, engaging, highly knowledgeable AI academic voice tutor. Provide a comprehensive, easy-to-understand spoken explanation in 4 to 6 natural sentences. Walk through the core principles, give an intuitive real-world example, and mention key exam takeaways. Keep your language conversational and flowing without markdown symbols, asterisks, headers, or bullet lists."
+      ? "You are an expert, encouraging AI academic voice tutor powered by Google Gemini. The student has spoken their question to you. Answer their question directly, thoroughly, and correctly with deep academic clarity. Explain the foundational concept step by step, provide an intuitive real-world example, and highlight the key takeaways. IMPORTANT FOR AUDIO SYNTHESIS: Format your answer in clean, natural conversational spoken sentences without any markdown symbols, asterisks (**), hashtags (###), bullet points, or code blocks, so your explanation sounds engaging, fluid, and lifelike when spoken aloud."
       : "You are an encouraging, highly knowledgeable AI academic tutor. Explain concepts step-by-step with clear definitions, analogies, and practical examples.";
     let retrievedContext = "";
 
@@ -47,8 +47,20 @@ export async function POST(req: NextRequest) {
           snippet: r.content.slice(0, 200) + (r.content.length > 200 ? "..." : ""),
         }));
 
-        systemPrompt = buildRagPrompt(lastMessage.content, retrieved);
         retrievedContext = retrieved.map((r) => r.content).join("\n\n");
+        if (isVoice) {
+          systemPrompt = `You are an expert AI academic voice tutor powered by Google Gemini. Use the following course material excerpts to accurately and thoroughly answer the student's spoken question:
+
+Course Material Excerpts from "${documentTitle || "Study Material"}":
+${retrievedContext}
+
+Instructions:
+1. Answer the student's question accurately and completely using facts and explanations from the excerpts.
+2. Speak directly to the student in a clear, friendly, and structured spoken style.
+3. Keep the language natural and conversational for audio text-to-speech. Never use markdown asterisks (**), headers, or bullet symbols.`;
+        } else {
+          systemPrompt = buildRagPrompt(lastMessage.content, retrieved);
+        }
       }
     }
 

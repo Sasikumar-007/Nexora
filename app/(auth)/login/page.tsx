@@ -5,11 +5,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { NexoraLogo } from "@/components/ui/nexora-logo";
-import { GraduationCap, Lock, Mail, AlertCircle, Sparkles } from "lucide-react";
+import { Lock, Mail, AlertCircle, Sparkles } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { useUser } from "@/lib/auth/user-context";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { loginUser } = useUser();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -21,20 +23,27 @@ export default function LoginPage() {
     setLoading(true);
 
     if (!isSupabaseConfigured()) {
+      loginUser(email);
       setTimeout(() => {
         router.push("/dashboard");
-      }, 500);
+      }, 300);
       return;
     }
 
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
+
+      const metaName =
+        data?.user?.user_metadata?.full_name ||
+        data?.user?.user_metadata?.name;
+
+      loginUser(email, metaName, data?.user?.id);
       router.push("/dashboard");
     } catch (err: any) {
       setError(err.message || "Failed to sign in");
@@ -44,6 +53,11 @@ export default function LoginPage() {
   };
 
   const handleQuickDemo = () => {
+    if (email && email.trim()) {
+      loginUser(email.trim());
+    } else {
+      loginUser("alex.morgan@university.edu", "Alex Morgan");
+    }
     router.push("/dashboard");
   };
 
