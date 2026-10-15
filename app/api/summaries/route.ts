@@ -62,33 +62,30 @@ export async function POST(req: NextRequest) {
       },
     };
 
-    const prompt = `Generate an in-depth academic summary and complete Exam Blueprint for: "${topic || "Uploaded Course Material"}".
-Format requested: ${format || "detailed"}.
+    const cleanTopic = (topic || "Academic Course Material").replace(/\.[^/.]+$/, "").trim();
 
-MANDATORY EXAM POINT OF VIEW SECTIONS:
-For EACH core concept identified from the material:
-1. 2 MARKS VIEW (Short / Definitive Answer):
-   - Provide an actual university 2-mark question.
-   - Provide a concise, high-scoring model answer with precise definitions and formulas.
-   - List the essential keywords university evaluators search for when awarding 2/2 marks.
-2. 16 MARKS VIEW (Comprehensive Essay / Derivation Answer):
-   - Provide a full 16-mark university examination question.
-   - Provide structured section outline headings.
-   - Provide a comprehensive, in-depth structured essay answer (Introduction, Core Mechanism, Step-by-Step Derivation/Proof, Structural Flow, Trade-offs).
-   - Provide an ASCII/markdown diagram or formula block.
-   - Provide specific scoring advice to help students obtain full 16/16 marks from examiners.
+    const prompt = `You are a distinguished university professor and academic paper setter. Generate an authoritative, in-depth academic summary and rigorous Exam Preparation Blueprint for: "${cleanTopic}".
+Format style: ${format || "detailed"}.
 
-Input text excerpt:
-${text ? text.slice(0, 4500) : "General course study material."}`;
+EXAM POINT OF VIEW CRITERIA:
+1. IDENTIFY 3 TO 4 DISTINCT CORE CONCEPTS:
+   Extract real foundational concepts (e.g. Asymptotic Analysis, Search Trees, Dynamic Programming Optimality). Do NOT use generic words like "Overview" or "Comprehensive".
+2. FOR EACH CORE CONCEPT PROVIDE:
+   • Accurate 1-paragraph theoretical definition.
+   • 2 MARKS EXAM VIEW: An authentic university 2-mark question, a crisp definitive answer with exact formulas/conditions, and mandatory keywords evaluators look for to award full 2/2 marks.
+   • 16 MARKS EXAM VIEW: A complete university 16-mark essay question, structured section outline (1. Intro, 2. Architecture & Working Mechanism, 3. Step-by-Step Derivation, 4. Trade-offs, 5. Scoring Blueprint), in-depth structured model answer, ASCII/Markdown diagram or formula block, and exact scoring tips.
+
+Source Syllabus Context:
+${text && text.trim().length > 30 ? text.slice(0, 5000) : `Standard university curriculum and exam syllabus for ${cleanTopic}.`}`;
 
     const result = await generateStructuredJson<typeof sampleSchema>({
       prompt,
       systemPrompt:
         "You are an expert university professor and exam paper setter. Provide high-yield academic summaries with rigorous 2-Marks and 16-Marks exam views.",
       schemaSample: sampleSchema,
-      topic: topic || "Uploaded Course Material",
+      topic: cleanTopic,
       text: text || "",
-      model: process.env.AI_MODEL || "gemini-3.6-flash",
+      model: process.env.AI_MODEL || "gemini-3.5-flash-lite",
     });
 
     return NextResponse.json({

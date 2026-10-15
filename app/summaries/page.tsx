@@ -321,13 +321,16 @@ Tree: Root=2 -> Children: 5, 7 -> Grandchildren: 10, 12, 9`,
     if (targetId) {
       const doc = allDocs.find((d) => d.id === targetId);
       if (doc && (doc.is_custom || urlDocId)) {
-        // Check cache first
+        // Check cache first (must have 2-mark or 16-mark exam views)
         const cacheKey = `nexora_summary_${targetId}_${summaryFormat}`;
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
           try {
-            setSummaryData(JSON.parse(cached));
-            return;
+            const parsed = JSON.parse(cached);
+            if (parsed && (parsed.examPointOfView || parsed.coreConcepts?.[0]?.twoMarksView)) {
+              setSummaryData(parsed);
+              return;
+            }
           } catch {}
         }
         triggerGeneration(doc, summaryFormat);
@@ -343,12 +346,13 @@ Tree: Root=2 -> Children: 5, 7 -> Grandchildren: 10, 12, 9`,
     setError(null);
 
     try {
+      const cleanTitle = doc.title.replace(/\.[^/.]+$/, "").trim();
       const textToUse = doc.extracted_text || doc.extracted_text_snippet || "";
       const res = await fetch("/api/summaries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topic: doc.title,
+          topic: cleanTitle,
           format: format,
           text: textToUse ? textToUse.slice(0, 6000) : "",
         }),

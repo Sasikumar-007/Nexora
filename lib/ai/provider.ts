@@ -42,6 +42,10 @@ function getPrioritizedGeminiModels(preferredModel?: string): string[] {
     preferredModel,
     activeGeminiModel,
     envModel,
+    "gemini-3.5-flash-lite",
+    "gemini-flash-lite-latest",
+    "gemini-3.1-flash-lite",
+    "gemini-3.7-flash",
     "gemini-3.6-flash",
     "gemini-3.5-flash",
     "gemini-3.8-flash",
@@ -100,7 +104,7 @@ export async function callGoogleGemini(params: {
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(9000),
+        signal: AbortSignal.timeout(20000),
         body: JSON.stringify({
           system_instruction: {
             parts: [{ text: systemText }],
@@ -108,7 +112,7 @@ export async function callGoogleGemini(params: {
           contents,
           generationConfig: {
             temperature: params.temperature ?? (params.isVoice ? 0.35 : 0.4),
-            maxOutputTokens: params.isVoice ? 1200 : (params.maxTokens ?? 2000),
+            maxOutputTokens: params.isVoice ? 1200 : (params.maxTokens ?? 3000),
           },
         }),
       });
@@ -121,8 +125,11 @@ export async function callGoogleGemini(params: {
           return text.trim();
         }
       } else {
+        if (res.status === 429 || res.status === 503) {
+          if (activeGeminiModel === model) activeGeminiModel = null;
+        }
         const errText = await res.text();
-        console.warn(`[Gemini API ${model}] Notice (${res.status}):`, errText);
+        console.warn(`[Gemini API ${model}] Notice (${res.status}):`, errText.slice(0, 120));
       }
     } catch (err: any) {
       console.warn(`[Gemini API ${model}] Connection warning:`, err.message);
@@ -164,7 +171,7 @@ export async function callGoogleGeminiJson<T>(params: {
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(30000),
         body: JSON.stringify({
           contents: [
             {
@@ -175,7 +182,7 @@ export async function callGoogleGeminiJson<T>(params: {
           generationConfig: {
             responseMimeType: "application/json",
             temperature: 0.2,
-            maxOutputTokens: 3000,
+            maxOutputTokens: 6000,
           },
         }),
       });
@@ -201,8 +208,11 @@ export async function callGoogleGeminiJson<T>(params: {
           return parsed;
         }
       } else {
+        if (res.status === 429 || res.status === 503) {
+          if (activeGeminiModel === model) activeGeminiModel = null;
+        }
         const errText = await res.text();
-        console.warn(`[Gemini JSON ${model}] Notice (${res.status}):`, errText);
+        console.warn(`[Gemini JSON ${model}] Notice (${res.status}):`, errText.slice(0, 120));
       }
     } catch (err: any) {
       console.warn(`[Gemini JSON ${model}] Warning:`, err.message);

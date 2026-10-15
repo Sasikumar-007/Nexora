@@ -83,11 +83,14 @@ function extractKeyTerms(text: string): string[] {
     "which", "there", "their", "about", "would", "these", "other", "words",
     "could", "should", "during", "before", "between", "through", "under", "system",
     "general", "following", "without", "against", "including", "because",
+    "comprehensive", "notes", "overview", "introduction", "fundamental", "fundamentals",
+    "summary", "chapter", "study", "syllabus", "material", "reference", "course",
+    "topics", "analysis", "basics", "module", "session", "mastery", "extracted", "snippet",
   ]);
 
   for (const w of words) {
     const lower = w.toLowerCase();
-    if (!stopWords.has(lower)) {
+    if (!stopWords.has(lower) && w.length > 3) {
       counts[w] = (counts[w] || 0) + 1;
     }
   }
@@ -415,6 +418,19 @@ export function generateDynamicSummaryFromText(params: {
       `Foundational principles in ${topic} form the core of exam assessments.`,
       `Derivations require explicit justification of initial assumptions and boundary conditions.`,
       `Active recall and targeted testing enhance retention of ${topic} by over 300%.`
+    );
+  }
+
+  const coreConcepts = terms.slice(0, 3).map((t, idx) => ({
+    name: t,
+    description: sentences[idx] || `Key foundational component essential for examination mastery in ${topic}.`,
+  }));
+
+  if (coreConcepts.length === 0) {
+    coreConcepts.push(
+      { name: `${topic} Principles`, description: `Fundamental theoretical mechanism governing ${topic}.` },
+      { name: "Boundary Analysis", description: "Evaluating analytical behavior as variables approach operational limits." },
+      { name: "Optimal Substructure", description: "Balancing resource expenditure against solution fidelity." }
     );
   }
 
