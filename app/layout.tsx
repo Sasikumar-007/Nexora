@@ -1,27 +1,6 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-
-const jakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  variable: "--font-jakarta",
-  weight: ["500", "600", "700", "800"],
-  display: "swap",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
-
-const mono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-  weight: ["400", "600"],
-  display: "swap",
-});
+import { UserProvider } from "@/lib/auth/user-context";
 
 export const metadata: Metadata = {
   title: "Nexora — AI Learning Platform for Students",
@@ -34,22 +13,23 @@ export const metadata: Metadata = {
   },
 };
 
-import { UserProvider } from "@/lib/auth/user-context";
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${jakarta.variable} ${inter.variable} ${mono.variable}`}
-    >
+    <html lang="en">
       <head>
         <link rel="icon" type="image/png" href="/logo.png" />
         <link rel="shortcut icon" type="image/png" href="/logo.png" />
         <link rel="apple-touch-icon" href="/logo.png" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
+          rel="stylesheet"
+        />
       </head>
       <body className="min-h-screen bg-[#F7F9FD] text-[#1D156B] font-sans antialiased selection:bg-[#DCF090] selection:text-[#1D156B]">
         <UserProvider>{children}</UserProvider>
