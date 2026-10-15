@@ -43,6 +43,8 @@ function QuizzesContent() {
   const [generatorOpen, setGeneratorOpen] = useState(false);
   const [genTopic, setGenTopic] = useState("");
   const [genDifficulty, setGenDifficulty] = useState<"easy" | "medium" | "hard">("medium");
+  const [questionCount, setQuestionCount] = useState<number>(5);
+  const [genCount, setGenCount] = useState<number>(5);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,7 +57,7 @@ function QuizzesContent() {
       const doc = allDocs.find((d) => d.id === urlDocId);
       if (doc) {
         setSelectedDocId(doc.id);
-        loadOrGenerateQuizForDoc(doc, "medium");
+        loadOrGenerateQuizForDoc(doc, "medium", questionCount);
         return;
       }
     }
@@ -68,10 +70,11 @@ function QuizzesContent() {
 
   const loadOrGenerateQuizForDoc = async (
     doc: ExtendedDocumentRecord,
-    difficulty: "easy" | "medium" | "hard" = "medium"
+    difficulty: "easy" | "medium" | "hard" = "medium",
+    count: number = questionCount
   ) => {
     setError(null);
-    const cacheKey = `nexora_quiz_${doc.id}_${difficulty}`;
+    const cacheKey = `nexora_quiz_${doc.id}_${difficulty}_${count}`;
     const cached = localStorage.getItem(cacheKey);
 
     if (cached) {
@@ -91,6 +94,7 @@ function QuizzesContent() {
       topic: doc.title,
       text: doc.extracted_text || doc.extracted_text_snippet || "",
       difficulty,
+      count,
       docId: doc.id,
     });
   };
@@ -99,15 +103,18 @@ function QuizzesContent() {
     topic,
     text,
     difficulty,
+    count,
     docId,
   }: {
     topic: string;
     text?: string;
     difficulty: "easy" | "medium" | "hard";
+    count?: number;
     docId?: string;
   }) => {
     setIsGenerating(true);
     setError(null);
+    const finalCount = count || questionCount;
 
     try {
       const res = await fetch("/api/quizzes/generate", {
@@ -116,8 +123,8 @@ function QuizzesContent() {
         body: JSON.stringify({
           topic: topic || "Course Material",
           difficulty,
-          count: 4,
-          text: text ? text.slice(0, 10000) : undefined,
+          count: finalCount,
+          text: text ? text.slice(0, 8000) : undefined,
         }),
       });
 
@@ -137,7 +144,7 @@ function QuizzesContent() {
         if (docId) {
           try {
             localStorage.setItem(
-              `nexora_quiz_${docId}_${difficulty}`,
+              `nexora_quiz_${docId}_${difficulty}_${finalCount}`,
               JSON.stringify(data.quiz)
             );
           } catch {}
@@ -213,10 +220,12 @@ function QuizzesContent() {
   const handleManualModalGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     const doc = documents.find((d) => d.id === selectedDocId);
+    setQuestionCount(genCount);
     await generateQuizFromContent({
       topic: genTopic || doc?.title || "Exam Preparation",
       text: doc?.extracted_text || doc?.extracted_text_snippet || undefined,
       difficulty: genDifficulty,
+      count: genCount,
       docId: doc?.id,
     });
   };
@@ -239,7 +248,7 @@ function QuizzesContent() {
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1.5">
               <span className="badge-weaviate-lime font-mono text-[10px] font-bold">
-                ✨ GEMINI 3.5 FLASH API
+                ✨ GEMINI AI ENGINE
               </span>
               <label className="block text-xs font-mono font-bold uppercase text-[#8396B1] flex items-center gap-1.5">
                 <BookOpen className="h-3.5 w-3.5 text-[#CFDE22]" /> Select Study Material
@@ -251,7 +260,7 @@ function QuizzesContent() {
                 const newId = e.target.value;
                 setSelectedDocId(newId);
                 const doc = documents.find((d) => d.id === newId);
-                if (doc) loadOrGenerateQuizForDoc(doc, "medium");
+                if (doc) loadOrGenerateQuizForDoc(doc, "medium", questionCount);
               }}
               className="w-full rounded-xl border border-[#DEDCEF] bg-white p-2.5 text-xs sm:text-sm font-semibold text-[#1D156B] focus:outline-none focus:border-[#1D156B]"
             >
@@ -264,14 +273,39 @@ function QuizzesContent() {
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Custom Question Count Quick Selector */}
+            <div className="flex items-center gap-1.5 bg-[#F7F9FD] px-3 py-2 rounded-xl border border-[#DEDCEF]">
+              <span className="text-[11px] font-mono font-bold text-[#8396B1] uppercase">Questions:</span>
+              <select
+                value={questionCount}
+                onChange={(e) => {
+                  const cnt = Number(e.target.value);
+                  setQuestionCount(cnt);
+                  setGenCount(cnt);
+                  if (currentDoc) {
+                    loadOrGenerateQuizForDoc(currentDoc, activeQuiz.difficulty || "medium", cnt);
+                  }
+                }}
+                className="bg-transparent text-xs font-mono font-bold text-[#1D156B] focus:outline-none cursor-pointer"
+              >
+                <option value={3}>3 Questions</option>
+                <option value={5}>5 Questions</option>
+                <option value={8}>8 Questions</option>
+                <option value={10}>10 Questions</option>
+                <option value={15}>15 Questions</option>
+                <option value={20}>20 Questions</option>
+              </select>
+            </div>
+
             <button
               onClick={() => {
                 if (currentDoc) {
                   generateQuizFromContent({
                     topic: currentDoc.title,
                     text: currentDoc.extracted_text || currentDoc.extracted_text_snippet || undefined,
-                    difficulty: "medium",
+                    difficulty: activeQuiz.difficulty || "medium",
+                    count: questionCount,
                     docId: currentDoc.id,
                   });
                 }
@@ -280,10 +314,13 @@ function QuizzesContent() {
               className="btn-weaviate-secondary text-xs px-4 py-2.5 gap-1.5 disabled:opacity-50"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${isGenerating ? "animate-spin" : ""}`} />
-              Generate Gemini Questions
+              Generate Questions
             </button>
             <button
-              onClick={() => setGeneratorOpen(true)}
+              onClick={() => {
+                setGenCount(questionCount);
+                setGeneratorOpen(true);
+              }}
               className="btn-weaviate-primary text-xs px-4 py-2.5 gap-1.5"
             >
               <Sparkles className="h-3.5 w-3.5" /> Custom Settings
@@ -305,10 +342,10 @@ function QuizzesContent() {
               <RefreshCw className="h-5 w-5 animate-spin" />
             </div>
             <h3 className="font-bold font-display text-base text-[#1D156B]">
-              Google Gemini is Generating Exam Questions for: {currentDoc?.title || "Your Material"}
+              Google Gemini is Generating {questionCount} In-Depth Conceptual Questions for: {currentDoc?.title || "Your Material"}
             </h3>
             <p className="text-xs text-[#4C4B84] max-w-md mx-auto">
-              Gemini 3.5 Flash is analyzing the syllabus to craft targeted multiple-choice questions with step-by-step reasoning...
+              Gemini AI is analyzing the syllabus to craft targeted multiple-choice questions with step-by-step reasoning and deep concept takeaways...
             </p>
           </div>
         )}
@@ -316,8 +353,12 @@ function QuizzesContent() {
         {/* Header & Controls */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-0.5 text-xs font-mono font-bold border border-[#DEDCEF] uppercase mb-1">
-              <Flame className="h-3.5 w-3.5 text-[#CFDE22] fill-[#CFDE22]" /> {activeQuiz.difficulty} Assessment
+            <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-0.5 text-xs font-mono font-bold border border-[#DEDCEF] uppercase mb-1">
+              <span className="flex items-center gap-1 text-[#1D156B]">
+                <Flame className="h-3.5 w-3.5 text-[#CFDE22] fill-[#CFDE22]" /> {activeQuiz.difficulty} Assessment
+              </span>
+              <span className="text-[#8396B1]">•</span>
+              <span className="text-[#1D156B]">{questions.length} Questions</span>
             </div>
             <h2 className="text-2xl font-bold font-display text-[#1D156B] tracking-tight">
               {activeQuiz.title}
@@ -576,6 +617,49 @@ function QuizzesContent() {
                         {diff}
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-mono font-bold uppercase text-[#8396B1]">
+                      Number of Questions
+                    </label>
+                    <span className="text-xs font-mono font-bold text-[#1D156B]">
+                      {genCount} Questions
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-5 gap-1.5 mb-2">
+                    {[3, 5, 10, 15, 20].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => setGenCount(num)}
+                        className={`py-2 rounded-xl text-xs font-mono font-bold border transition-all ${
+                          genCount === num
+                            ? "bg-[#1D156B] text-white border-[#1D156B] shadow-glow-ink"
+                            : "bg-white text-[#4C4B84] border-[#DEDCEF] hover:bg-[#F7F9FD]"
+                        }`}
+                      >
+                        {num} Qs
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <span className="text-xs text-[#8396B1] font-mono">Custom:</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={30}
+                      value={genCount}
+                      onChange={(e) =>
+                        setGenCount(
+                          Math.max(1, Math.min(30, parseInt(e.target.value) || 1))
+                        )
+                      }
+                      className="w-20 rounded-xl border border-[#DEDCEF] p-2 text-xs font-mono font-bold text-[#1D156B] focus:outline-none focus:border-[#1D156B]"
+                    />
+                    <span className="text-[11px] text-[#8396B1] font-mono">(1 to 30)</span>
                   </div>
                 </div>
 

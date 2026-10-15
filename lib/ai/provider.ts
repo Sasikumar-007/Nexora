@@ -32,6 +32,26 @@ export function getGeminiKey(customKey?: string): string {
   ).trim();
 }
 
+// In-memory cache of fastest responsive Gemini model to eliminate trial latency
+let activeGeminiModel: string | null = null;
+const jsonResponseCache = new Map<string, { data: any; expiry: number }>();
+
+function getPrioritizedGeminiModels(preferredModel?: string): string[] {
+  const envModel = process.env.AI_MODEL?.trim();
+  const list = [
+    preferredModel,
+    activeGeminiModel,
+    envModel,
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-3.8-flash",
+    "gemini-flash-latest",
+  ].filter(Boolean) as string[];
+
+  // Return unique models preserving priority
+  return Array.from(new Set(list));
+}
+
 /**
  * Direct native Google Gemini API caller for real-time natural language answers
  */
@@ -42,13 +62,9 @@ export async function callGoogleGemini(params: {
   temperature?: number;
   maxTokens?: number;
   isVoice?: boolean;
+  preferredModel?: string;
 }): Promise<string | null> {
-  const models = [
-    "gemini-3.8-flash",
-    "gemini-3.6-flash",
-    "gemini-3.5-flash",
-    "gemini-flash-latest",
-  ];
+  const models = getPrioritizedGeminiModels(params.preferredModel);
 
   let systemText = params.systemPrompt || "You are an expert academic tutor.";
   if (params.isVoice) {
@@ -84,6 +100,7 @@ export async function callGoogleGemini(params: {
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(9000),
         body: JSON.stringify({
           system_instruction: {
             parts: [{ text: systemText }],
@@ -100,6 +117,7 @@ export async function callGoogleGemini(params: {
         const data = await res.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text && text.trim().length > 0) {
+          activeGeminiModel = model;
           return text.trim();
         }
       } else {
@@ -121,13 +139,16 @@ export async function callGoogleGeminiJson<T>(params: {
   prompt: string;
   systemPrompt?: string;
   schemaSample?: Record<string, any>;
+  preferredModel?: string;
 }): Promise<T | null> {
-  const models = [
-    "gemini-3.8-flash",
-    "gemini-3.6-flash",
-    "gemini-3.5-flash",
-    "gemini-flash-latest",
-  ];
+  // Check memory cache
+  const cacheKey = `${params.prompt}_${JSON.stringify(params.schemaSample || {})}`;
+  const cached = jsonResponseCache.get(cacheKey);
+  if (cached && Date.now() < cached.expiry) {
+    return cached.data as T;
+  }
+
+  const models = getPrioritizedGeminiModels(params.preferredModel);
   let schemaInstruction = "";
   if (params.schemaSample) {
     schemaInstruction = `\n\nREQUIRED JSON SCHEMA STRUCTURE:\n${JSON.stringify(params.schemaSample, null, 2)}\n\n`;
@@ -143,6 +164,7 @@ export async function callGoogleGeminiJson<T>(params: {
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(10000),
         body: JSON.stringify({
           contents: [
             {
@@ -153,6 +175,7 @@ export async function callGoogleGeminiJson<T>(params: {
           generationConfig: {
             responseMimeType: "application/json",
             temperature: 0.2,
+            maxOutputTokens: 3000,
           },
         }),
       });
@@ -172,7 +195,10 @@ export async function callGoogleGeminiJson<T>(params: {
               cleaned = cleaned.slice(firstBrace, lastBrace + 1);
             }
           }
-          return JSON.parse(cleaned) as T;
+          const parsed = JSON.parse(cleaned) as T;
+          activeGeminiModel = model;
+          jsonResponseCache.set(cacheKey, { data: parsed, expiry: Date.now() + 15 * 60 * 1000 });
+          return parsed;
         }
       } else {
         const errText = await res.text();
@@ -304,6 +330,7 @@ export async function generateStructuredJson<T>(params: {
   schemaSample: Record<string, any>;
   text?: string;
   topic?: string;
+  count?: number;
   apiKey?: string;
   apiUrl?: string;
   model?: string;
@@ -322,6 +349,7 @@ export async function generateStructuredJson<T>(params: {
         prompt: params.prompt,
         systemPrompt: params.systemPrompt,
         schemaSample: params.schemaSample,
+        preferredModel: params.model || model,
       });
       if (geminiJson) {
         return geminiJson;
@@ -381,13 +409,19 @@ export async function generateStructuredJson<T>(params: {
   }
 
   // Dynamic content generator based on requested schema
+  let count = params.count;
+  if (!count) {
+    const countMatch = params.prompt.match(/(\d+)\s+questions/i);
+    if (countMatch) count = parseInt(countMatch[1], 10);
+  }
+
   if (params.schemaSample.cards) {
-    const cards = generateDynamicFlashcardsFromText({ topic, text, count: 6 });
+    const cards = generateDynamicFlashcardsFromText({ topic, text, count: count || 6 });
     return { cards } as unknown as T;
   }
 
   if (params.schemaSample.questions) {
-    const questions = generateDynamicQuizFromText({ topic, text, count: 4 });
+    const questions = generateDynamicQuizFromText({ topic, text, count: count || 5 });
     return { questions } as unknown as T;
   }
 

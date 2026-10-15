@@ -5,29 +5,44 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { topic, difficulty, count, text } = body;
-    const requestedCount = count || 4;
+    const requestedCount = Math.max(1, Math.min(30, Number(count) || 5));
 
     const sampleSchema = {
       questions: [
         {
-          question: "Sample Question text?",
-          options: ["Option A", "Option B", "Option C", "Option D"],
+          question: "Rigorous in-depth conceptual question testing underlying mechanisms, invariants, or edge cases?",
+          options: [
+            "Plausible detailed option A demonstrating correct conceptual principle",
+            "Subtle distractor B representing common misconception",
+            "Alternative distractor C with inverted boundary assumption",
+            "Plausible distractor D with incorrect scaling factor",
+          ],
           correct_answer: 0,
-          explanation: "Detailed reason why Option A is correct.",
+          explanation: "In-depth reasoning: Option A is correct because of [mechanism]. Options B, C, and D fail due to specific boundary conditions or theoretical principles.",
         },
       ],
     };
 
-    const prompt = `Generate a ${difficulty || "medium"} difficulty multiple-choice quiz with ${requestedCount} questions on: "${topic || "Study Material"}".
-Each question must have exactly 4 plausible options, a correct answer index (0 to 3), and a comprehensive step-by-step explanation.
-Text excerpt: ${text ? text.slice(0, 2500) : "General exam preparation topics."}`;
+    const prompt = `You are a distinguished university professor designing an in-depth, rigorous conceptual multiple-choice exam with exactly ${requestedCount} questions on: "${topic || "Study Material"}".
+Difficulty Level: ${difficulty || "medium"}.
+
+STRICT EXAM QUALITY CRITERIA:
+1. DEEP CONCEPTUAL FOCUS: Questions must test deep understanding, causal mechanisms, architectural trade-offs, theoretical edge cases, failure modes, and scenario problem-solving. Do NOT ask superficial trivia, recall, or simple fill-in-the-blanks.
+2. ACADEMICALLY RIGOROUS OPTIONS: Provide exactly 4 distinct, plausible options. Each distractor must represent a realistic student misconception or subtle technical trap.
+3. IN-DEPTH EXPLANATIONS: The explanation must thoroughly explain the core concept, why the correct answer is logically and technically valid, and why each distractor is wrong.
+4. VARIETY: Each of the ${requestedCount} questions must target a distinct foundational sub-topic or principle from the material.
+
+Source Text Context (use to ground questions deeply):
+${text ? text.slice(0, 4500) : "Advanced academic syllabus principles."}`;
 
     const result = await generateStructuredJson<typeof sampleSchema>({
       prompt,
-      systemPrompt: "You are an expert exam question creator for university STEM courses.",
+      systemPrompt: "You are an expert exam question creator for university STEM courses. Generate rigorous, high-yield conceptual questions.",
       schemaSample: sampleSchema,
       topic: topic || "Study Material",
       text: text || "",
+      count: requestedCount,
+      model: process.env.AI_MODEL || "gemini-3.6-flash",
     });
 
     const quizId = "quiz-" + Date.now();
@@ -36,7 +51,7 @@ Text excerpt: ${text ? text.slice(0, 2500) : "General exam preparation topics."}
       quiz_id: quizId,
       question: q.question,
       options: q.options,
-      correct_answer: q.correct_answer, // stored on server/session
+      correct_answer: typeof q.correct_answer === "number" ? q.correct_answer : 0,
       explanation: q.explanation,
     }));
 
@@ -44,7 +59,7 @@ Text excerpt: ${text ? text.slice(0, 2500) : "General exam preparation topics."}
       success: true,
       quiz: {
         id: quizId,
-        title: topic ? `${topic} Quiz` : "Practice Assessment Quiz",
+        title: topic ? `${topic} Assessment` : "In-Depth Practice Assessment Quiz",
         difficulty: difficulty || "medium",
         topic: topic || "Study Material",
         questions: questions,
